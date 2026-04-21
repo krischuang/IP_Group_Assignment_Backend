@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     jwt_secret: str = "changeme"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60
+    root_path: str = ""
 
     class Config:
         env_file = ".env"
