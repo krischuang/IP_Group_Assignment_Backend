@@ -1,16 +1,15 @@
 from datetime import datetime, timedelta, timezone
 from pymongo import ReturnDocument
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError
-from jose import jwt
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
 from app.config import settings
+from app.dependencies import get_current_user
 from app.keys import public_key_pem
 from app.models.user import User, UserRole
 from app.models.counter import Counter
 from app.utils.rsa_crypto import decrypt_password
+from jose import jwt
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -118,9 +117,6 @@ async def login(body: LoginRequest):
     return LoginResponse(access_token=token, role=user.role)
 
 
-_bearer = HTTPBearer()
-
-
 class MeResponse(BaseModel):
     user_id: int
     email: str
@@ -132,18 +128,7 @@ class MeResponse(BaseModel):
     update_time: datetime
 
 
-@router.get("/me", response_model=MeResponse)
-async def me(credentials: HTTPAuthorizationCredentials = Depends(_bearer)):
-    try:
-        payload = jwt.decode(credentials.credentials, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
-        user_id = int(payload["sub"])
-    except (JWTError, KeyError, ValueError):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
-
-    user = await User.find_one(User.user_id == user_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
+def _me_response(user: User) -> MeResponse:
     return MeResponse(
         user_id=user.user_id,
         email=user.email,
@@ -154,6 +139,11 @@ async def me(credentials: HTTPAuthorizationCredentials = Depends(_bearer)):
         create_time=user.create_time,
         update_time=user.update_time,
     )
+
+
+@router.get("/me", response_model=MeResponse)
+async def me(current_user: User = Depends(get_current_user)):
+    return _me_response(current_user)
 
 
 class UpdateMeRequest(BaseModel):
@@ -163,30 +153,11 @@ class UpdateMeRequest(BaseModel):
 
 
 @router.post("/me", response_model=MeResponse)
-async def update_me(body: UpdateMeRequest, credentials: HTTPAuthorizationCredentials = Depends(_bearer)):
-    try:
-        payload = jwt.decode(credentials.credentials, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
-        user_id = int(payload["sub"])
-    except (JWTError, KeyError, ValueError):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
-
-    user = await User.find_one(User.user_id == user_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
+async def update_me(body: UpdateMeRequest, current_user: User = Depends(get_current_user)):
     updates = body.model_dump(exclude_none=True)
     if updates:
         updates["update_time"] = datetime.now(timezone.utc)
-        await user.update({"$set": updates})
-        await user.sync()
+        await current_user.update({"$set": updates})
+        await current_user.sync()
 
-    return MeResponse(
-        user_id=user.user_id,
-        email=user.email,
-        full_name=user.full_name,
-        role=user.role,
-        bio=user.bio,
-        image_address=user.image_address,
-        create_time=user.create_time,
-        update_time=user.update_time,
-    )
+    return _me_response(current_user)

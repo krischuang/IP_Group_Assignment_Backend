@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from app.routers import auth
+from app.routers import auth, admin
 from app.database import connect_db, close_db
 from app.models.user import User
 from app.models.counter import Counter
@@ -17,3 +17,4 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="IP Group Assignment API", lifespan=lifespan, root_path=settings.root_path)
 
 app.include_router(auth.router)
+app.include_router(admin.router)
