@@ -9,6 +9,7 @@ from app.keys import public_key_pem
 from app.models.user import User, UserRole
 from app.models.counter import Counter
 from app.utils.rsa_crypto import decrypt_password
+from app.utils.turnstile import verify_turnstile
 from jose import jwt
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -25,6 +26,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     role: UserRole = UserRole.user
+    turnstile_token: str
 
 
 class RegisterResponse(BaseModel):
@@ -54,6 +56,8 @@ def get_public_key():
 
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 async def register(body: RegisterRequest):
+    await verify_turnstile(body.turnstile_token)
+
     try:
         plain_password = decrypt_password(body.password)
     except ValueError as exc:
@@ -88,6 +92,7 @@ async def register(body: RegisterRequest):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    turnstile_token: str
 
 
 class LoginResponse(BaseModel):
@@ -98,6 +103,8 @@ class LoginResponse(BaseModel):
 
 @router.post("/login", response_model=LoginResponse)
 async def login(body: LoginRequest):
+    await verify_turnstile(body.turnstile_token)
+
     try:
         plain_password = decrypt_password(body.password)
     except ValueError as exc:
