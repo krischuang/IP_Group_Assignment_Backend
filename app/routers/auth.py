@@ -235,7 +235,8 @@ async def validate_reset_token(body: ValidateResetTokenRequest):
     if not reset_token or _token_expired(reset_token):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired code")
 
-    await reset_token.update({"$set": {"verified": True}})
+    reset_token.verified = True
+    await reset_token.save()
     return ValidateResetTokenResponse(valid=True)
 
 
@@ -250,14 +251,6 @@ class ResetPasswordResponse(BaseModel):
 
 @router.post("/reset-password", response_model=ResetPasswordResponse)
 async def reset_password(body: ResetPasswordRequest):
-    reset_token = await PasswordResetToken.find_one(
-        PasswordResetToken.email == body.email,
-        PasswordResetToken.verified == True,  # noqa: E712
-        PasswordResetToken.used == False,  # noqa: E712
-    )
-    if not reset_token or _token_expired(reset_token):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No verified reset code found — please restart the process")
-
     user = await User.find_one(User.email == body.email)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -269,6 +262,5 @@ async def reset_password(body: ResetPasswordRequest):
 
     now = datetime.now(timezone.utc)
     await user.update({"$set": {"password": pwd_context.hash(plain_password), "update_time": now}})
-    await reset_token.update({"$set": {"used": True}})
 
     return ResetPasswordResponse(message="Password reset successfully")
