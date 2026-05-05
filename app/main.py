@@ -5,12 +5,13 @@ from app.database import connect_db, close_db
 from app.models.user import User
 from app.models.counter import Counter
 from app.models.article import Article
+from app.models.password_reset import PasswordResetToken
 from app.config import settings
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await connect_db(document_models=[User, Counter, Article])
+    await connect_db(document_models=[User, Counter, Article, PasswordResetToken])
     yield
     await close_db()
 
