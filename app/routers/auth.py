@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timedelta, timezone
 from pymongo import ReturnDocument
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,8 +9,10 @@ from app.dependencies import get_current_user
 from app.keys import public_key_pem
 from app.models.user import User, UserRole
 from app.models.counter import Counter
+from app.models.password_reset import PasswordResetToken
 from app.utils.rsa_crypto import decrypt_password
 from app.utils.turnstile import verify_turnstile
+from app.utils.email import send_reset_email
 from jose import jwt
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -168,3 +171,104 @@ async def update_me(body: UpdateMeRequest, current_user: User = Depends(get_curr
         await current_user.sync()
 
     return _me_response(current_user)
+
+
+# ---------------------------------------------------------------------------
+# Forgot / Reset Password
+# ---------------------------------------------------------------------------
+
+def _token_expired(reset_token: PasswordResetToken) -> bool:
+    expires = reset_token.expires_at
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    return expires < datetime.now(timezone.utc)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+async def forgot_password(body: ForgotPasswordRequest):
+    user = await User.find_one(User.email == body.email)
+    generic_response = ForgotPasswordResponse(
+        message="If your email is registered, you will receive a password reset code."
+    )
+    if not user:
+        return generic_response
+
+    # 6-digit numeric OTP
+    token = str(secrets.randbelow(1000000)).zfill(6)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.reset_token_expire_minutes)
+
+    await PasswordResetToken(
+        email=user.email,
+        token=token,
+        expires_at=expires_at,
+    ).insert()
+
+    await send_reset_email(user.email, token)
+    return generic_response
+
+
+class ValidateResetTokenRequest(BaseModel):
+    email: EmailStr
+    token: str
+
+
+class ValidateResetTokenResponse(BaseModel):
+    valid: bool
+
+
+@router.post("/validate-reset-token", response_model=ValidateResetTokenResponse)
+async def validate_reset_token(body: ValidateResetTokenRequest):
+    reset_token = await PasswordResetToken.find_one(
+        PasswordResetToken.email == body.email,
+        PasswordResetToken.token == body.token,
+        PasswordResetToken.used == False,  # noqa: E712
+        PasswordResetToken.verified == False,  # noqa: E712
+    )
+    if not reset_token or _token_expired(reset_token):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired code")
+
+    await reset_token.update({"$set": {"verified": True}})
+    return ValidateResetTokenResponse(valid=True)
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    new_password: str  # RSA-encrypted with the server's public key
+
+
+class ResetPasswordResponse(BaseModel):
+    message: str
+
+
+@router.post("/reset-password", response_model=ResetPasswordResponse)
+async def reset_password(body: ResetPasswordRequest):
+    reset_token = await PasswordResetToken.find_one(
+        PasswordResetToken.email == body.email,
+        PasswordResetToken.verified == True,  # noqa: E712
+        PasswordResetToken.used == False,  # noqa: E712
+    )
+    if not reset_token or _token_expired(reset_token):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No verified reset code found — please restart the process")
+
+    user = await User.find_one(User.email == body.email)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    try:
+        plain_password = decrypt_password(body.new_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    now = datetime.now(timezone.utc)
+    await user.update({"$set": {"password": pwd_context.hash(plain_password), "update_time": now}})
+    await reset_token.update({"$set": {"used": True}})
+
+    return ResetPasswordResponse(message="Password reset successfully")
