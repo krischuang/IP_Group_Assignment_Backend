@@ -4,7 +4,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 
 BASE_URL = "http://127.0.0.1:8000"
-PLAIN_PASSWORD = "test"
+PLAIN_PASSWORD = "10291029"
 
 
 def encrypt_password(public_key_pem: str, plain_password: str) -> str:
