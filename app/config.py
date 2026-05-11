@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = ""
     reset_token_expire_minutes: int = 15
+    openrouter_api_key: str = ""
+    openrouter_timeout: float = 60.0
 
     class Config:
         env_file = ".env"
