@@ -29,7 +29,7 @@ FREE_MODELS: List[str] = [
     "openai/gpt-oss-20b:free",
 ]
 
-router = APIRouter(prefix="/api/ai-tools", tags=["ai-tools"])
+router = APIRouter(prefix="/ai-tools", tags=["ai-tools"])
 
 
 # ---------------------------------------------------------------------------
