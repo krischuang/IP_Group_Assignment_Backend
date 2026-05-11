@@ -2,17 +2,19 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import auth, admin, article, ai_tools
+from app.routers import bookmark
 from app.database import connect_db, close_db
 from app.models.user import User
 from app.models.counter import Counter
 from app.models.article import Article
 from app.models.password_reset import PasswordResetToken
+from app.models.bookmark import Bookmark
 from app.config import settings
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await connect_db(document_models=[User, Counter, Article, PasswordResetToken])
+    await connect_db(document_models=[User, Counter, Article, PasswordResetToken, Bookmark])
     yield
     await close_db()
 
@@ -31,3 +33,4 @@ app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(article.router)
 app.include_router(ai_tools.router)
+app.include_router(bookmark.router)

@@ -251,6 +251,18 @@ class ResetPasswordResponse(BaseModel):
 
 @router.post("/reset-password", response_model=ResetPasswordResponse)
 async def reset_password(body: ResetPasswordRequest):
+    # Require a verified, unused OTP token before allowing the password change
+    reset_token = await PasswordResetToken.find_one(
+        PasswordResetToken.email == body.email,
+        PasswordResetToken.verified == True,  # noqa: E712
+        PasswordResetToken.used == False,  # noqa: E712
+    )
+    if not reset_token or _token_expired(reset_token):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No valid reset session found. Please request a new code.",
+        )
+
     user = await User.find_one(User.email == body.email)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -263,4 +275,34 @@ async def reset_password(body: ResetPasswordRequest):
     now = datetime.now(timezone.utc)
     await user.update({"$set": {"password": pwd_context.hash(plain_password), "update_time": now}})
 
+    reset_token.used = True
+    await reset_token.save()
+
     return ResetPasswordResponse(message="Password reset successfully")
+
+
+# ---------------------------------------------------------------------------
+# Change password (authenticated — no OTP required)
+# ---------------------------------------------------------------------------
+
+class ChangePasswordRequest(BaseModel):
+    new_password: str  # RSA-encrypted with the server's public key
+
+
+class ChangePasswordResponse(BaseModel):
+    message: str
+
+
+@router.post("/me/password", response_model=ChangePasswordResponse)
+async def change_password(
+    body: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        plain_password = decrypt_password(body.new_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    now = datetime.now(timezone.utc)
+    await current_user.update({"$set": {"password": pwd_context.hash(plain_password), "update_time": now}})
+    return ChangePasswordResponse(message="Password changed successfully")
