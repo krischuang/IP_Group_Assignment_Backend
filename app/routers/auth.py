@@ -28,7 +28,6 @@ class RegisterRequest(BaseModel):
     full_name: str
     email: EmailStr
     password: str
-    role: UserRole = UserRole.user
     turnstile_token: str
 
 
@@ -76,7 +75,7 @@ async def register(body: RegisterRequest):
         email=body.email,
         password=pwd_context.hash(plain_password),
         full_name=body.full_name,
-        role=body.role,
+        role=UserRole.user,
         create_time=now,
         update_time=now,
     )
