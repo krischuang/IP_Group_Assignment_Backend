@@ -1,13 +1,12 @@
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
-from pymongo import ReturnDocument
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel
 from app.models.article import Article
-from app.models.counter import Counter
 from app.dependencies import get_current_user
 from app.models.user import User, UserRole
+from app.utils.counter import _next_id
 from app.routers.ai_tools import job_store, _run_summary_job
 
 router = APIRouter(prefix="/articles", tags=["articles"])
@@ -41,16 +40,6 @@ class ArticleResponse(BaseModel):
 
 # ---------- Helpers ----------
 
-async def _next_article_id() -> int:
-    collection = Counter.get_motor_collection()
-    result = await collection.find_one_and_update(
-        {"name": "article_id"},
-        {"$inc": {"value": 1}},
-        upsert=True,
-        return_document=ReturnDocument.AFTER,
-    )
-    return result["value"]
-
 
 def _to_response(article: Article) -> ArticleResponse:
     return ArticleResponse(
@@ -80,9 +69,8 @@ async def create_article(
     job_id = str(uuid.uuid4())
 
     article = Article(
-        article_id=await _next_article_id(),
+        article_id=await _next_id("article_id"),
         title=body.title,
-        summary=body.content[:120],
         content=body.content,
         author_id=current_user.user_id,
         ai_job_id=job_id,
@@ -129,8 +117,6 @@ async def update_article(
 
     if updates:
         updates["update_time"] = datetime.now(timezone.utc)
-        if "content" in updates:
-            updates["summary"] = updates["content"][:120]
         await article.update({"$set": updates})
         await article.sync()
     

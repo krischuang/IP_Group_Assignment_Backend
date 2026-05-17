@@ -60,16 +60,22 @@ async def create_bookmark(body: BookmarkCreate, current_user: User = Depends(get
 @router.get("/", response_model=list[BookmarkResponse])
 async def list_bookmarks(current_user: User = Depends(get_current_user)):
     bookmarks = await Bookmark.find(Bookmark.user_id == current_user.user_id).to_list()
-    result = []
-    for b in bookmarks:
-        article = await Article.find_one(Article.article_id == b.article_id)
-        result.append(BookmarkResponse(
+    if not bookmarks:
+        return []
+
+    article_ids = [b.article_id for b in bookmarks]
+    articles = await Article.find({"article_id": {"$in": article_ids}}).to_list()
+    article_map = {a.article_id: a for a in articles}
+
+    return [
+        BookmarkResponse(
             article_id=b.article_id,
             note=b.note,
             created_at=b.created_at,
-            article_title=article.title if article else f"Article #{b.article_id}",
-        ))
-    return result
+            article_title=article_map[b.article_id].title if b.article_id in article_map else f"Article #{b.article_id}",
+        )
+        for b in bookmarks
+    ]
 
 
 @router.put("/{article_id}", response_model=BookmarkResponse)

@@ -1,6 +1,5 @@
 import secrets
 from datetime import datetime, timedelta, timezone
-from pymongo import ReturnDocument
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
@@ -8,8 +7,8 @@ from app.config import settings
 from app.dependencies import get_current_user
 from app.keys import public_key_pem
 from app.models.user import User, UserRole
-from app.models.counter import Counter
 from app.models.password_reset import PasswordResetToken
+from app.utils.counter import _next_id
 from app.utils.rsa_crypto import decrypt_password
 from app.utils.turnstile import verify_turnstile
 from app.utils.email import send_reset_email
@@ -40,16 +39,6 @@ class RegisterResponse(BaseModel):
     update_time: datetime
 
 
-async def _next_user_id() -> int:
-    collection = Counter.get_motor_collection()
-    result = await collection.find_one_and_update(
-        {"name": "user_id"},
-        {"$inc": {"value": 1}},
-        upsert=True,
-        return_document=ReturnDocument.AFTER,
-    )
-    return result["value"]
-
 
 @router.get("/public-key", response_model=PublicKeyResponse)
 def get_public_key():
@@ -71,7 +60,7 @@ async def register(body: RegisterRequest):
 
     now = datetime.now(timezone.utc)
     user = User(
-        user_id=await _next_user_id(),
+        user_id=await _next_id("user_id"),
         email=body.email,
         password=pwd_context.hash(plain_password),
         full_name=body.full_name,

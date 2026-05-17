@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60
     root_path: str = ""
+    allowed_origins: str = "http://localhost:3000"
     turnstile_secret_key: str
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
