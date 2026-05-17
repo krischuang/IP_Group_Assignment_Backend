@@ -65,16 +65,13 @@ async def list_users(
     search: str | None = Query(default=None, description="Search by name, email, or role"),
     _admin=Depends(require_admin),
 ):
-    all_users = await User.find_all().to_list()
-
     if search:
-        q = search.lower()
-        all_users = [
-            u for u in all_users
-            if q in u.full_name.lower()
-            or q in u.email.lower()
-            or q in u.role.lower()
-        ]
+        regex = {"$regex": search, "$options": "i"}
+        all_users = await User.find(
+            {"$or": [{"full_name": regex}, {"email": regex}, {"role": regex}]}
+        ).to_list()
+    else:
+        all_users = await User.find_all().to_list()
 
     return UsersResponse(total=len(all_users), users=[_to_summary(u) for u in all_users])
 

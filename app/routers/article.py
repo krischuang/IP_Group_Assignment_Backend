@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from app.models.article import Article
 from app.models.counter import Counter
 from app.dependencies import get_current_user
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.routers.ai_tools import job_store, _run_summary_job
 
 router = APIRouter(prefix="/articles", tags=["articles"])
@@ -122,7 +122,7 @@ async def update_article(
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
 
-    if article.author_id != current_user.user_id:
+    if article.author_id != current_user.user_id and current_user.role != UserRole.admin:
         raise HTTPException(status_code=403, detail="Not allowed")
 
     updates = body.model_dump(exclude_none=True)
@@ -144,7 +144,7 @@ async def delete_article(article_id: int, current_user: User = Depends(get_curre
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
 
-    if article.author_id != current_user.user_id:
+    if article.author_id != current_user.user_id and current_user.role != UserRole.admin:
         raise HTTPException(status_code=403, detail="Not allowed")
 
     await article.delete()

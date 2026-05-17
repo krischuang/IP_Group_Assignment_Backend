@@ -89,6 +89,8 @@ class JobStatusResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 class InMemoryJobStore:
+    """Process-scoped store. Jobs are lost on restart and not shared across workers."""
+
     def __init__(self) -> None:
         self._store: Dict[str, dict] = {}
 
