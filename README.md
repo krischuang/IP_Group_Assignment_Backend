@@ -6,6 +6,17 @@ UTSFE (UTS Frontend Engineering) is a content-publishing platform where users ca
 
 ---
 
+## Live Demo
+
+| Environment | URL |
+|---|---|
+| Interactive API docs (Swagger UI) | **<https://utsipgroup.duckdns.org/api/docs>** |
+| Frontend application | <https://utsipgroup.duckdns.org/home> |
+
+> The backend is deployed on AWS EC2 (ap-southeast-2) and served behind an nginx reverse proxy. Automatic deploys are triggered by pushes to `main` via GitHub Actions.
+
+---
+
 ## Technical Stack
 
 | Layer | Technology |
@@ -175,7 +186,7 @@ IP_Group_Assignment_Backend/
 | `password_reset_tokens` | `PasswordResetToken` | Short-lived OTP tokens for the forgot-password flow |
 | `bookmarks` | `Bookmark` | User-saved article bookmarks with optional notes |
 
-A MongoDB export (`ip_group.json` or `.bson`) is included in the `db_export/` folder in the root repository.
+A MongoDB export (`.json` files) is included in the `data/` folder in the root repository.
 
 ---
 

@@ -154,9 +154,11 @@ class UpdateMeRequest(BaseModel):
 async def update_me(body: UpdateMeRequest, current_user: User = Depends(get_current_user)):
     updates = body.model_dump(exclude_none=True)
     if updates:
-        updates["update_time"] = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)
+        updates["update_time"] = now
         await current_user.update({"$set": updates})
-        await current_user.sync()
+        for key, value in updates.items():
+            setattr(current_user, key, value)
 
     return _me_response(current_user)
 
