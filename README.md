@@ -173,6 +173,7 @@ IP_Group_Assignment_Backend/
 | `articles` | `Article` | Published articles with AI summary fields |
 | `counters` | `Counter` | Auto-increment sequences for `user_id` and `article_id` |
 | `password_reset_tokens` | `PasswordResetToken` | Short-lived OTP tokens for the forgot-password flow |
+| `bookmarks` | `Bookmark` | User-saved article bookmarks with optional notes |
 
 A MongoDB export (`ip_group.json` or `.bson`) is included in the `db_export/` folder in the root repository.
 

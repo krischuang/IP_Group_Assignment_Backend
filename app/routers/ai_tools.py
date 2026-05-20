@@ -371,7 +371,10 @@ async def get_summary_job_status(job_id: str) -> JobStatusResponse:
     """
     job = job_store.get(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Job '{job_id}' not found. The server may have restarted — please generate a new summary.",
+        )
 
     result: Optional[ArticleSummary] = None
     if job["result"] is not None:
