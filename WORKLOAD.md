@@ -23,15 +23,19 @@
 | Frontend — App Architecture & Styling | | | ✅ |
 | Frontend — Admin Panel (articles + users) | | | ✅ |
 | Frontend — Article Pages (listing + detail) | | | ✅ |
+| Frontend — Article Detail UX Enhancements | | ✅ | |
+| Frontend — Dark Mode | | ✅ | |
+| Frontend — Recently Viewed Articles | | ✅ | |
 | Frontend — Auth Pages (sign-in + sign-up) | ✅ | | |
-| Frontend — Profile & Bookmarks | ✅ | | |
+| Frontend — Profile & Bookmarks | ✅ | ✅ | |
 | Frontend — Password Reset Flow | ✅ | | |
-| Frontend — BFF Proxy Routes | ✅ | ✅ | ✅ |
+| Frontend — AI Summary Panel | ✅ | | |
+| Frontend — BFF Proxy Routes | ✅ | | ✅ |
 | Frontend — CI/CD & Deployment | ✅ | | |
 
 ---
 
-## Kai-Hsiang Chuang — Backend & Frontend Auth/Profile
+## Kai-Hsiang Chuang — Backend & Frontend Auth/Profile/AI
 
 ### Backend (`IP_Group_Assignment_Backend/`)
 
@@ -66,20 +70,24 @@
 | `actions/password-reset.ts` | Server actions: `forgotPassword`, `validateResetToken`, `resetPassword`, `changePassword` |
 | `app/sign-in/page.tsx` | Sign-in page with Turnstile, redirect-after-login, forgot-password trigger |
 | `app/sign-up/page.tsx` | Sign-up page with Turnstile, password strength meter, confirm-password check |
-| `app/profile/page.tsx` | Profile page: edit name/email, change password, manage bookmarks |
+| `app/profile/page.tsx` | Profile page: edit name/email, change password, manage bookmarks (co-authored with Shelly) |
 | `app/forgot-password/page.tsx` | Standalone forgot-password page (3-step: email → OTP → new password) |
+| `app/articles/[id]/page.tsx` | AI summary panel with real-time job polling and animated progress bar (co-authored with Dequan and Shelly) |
 | `app/bff/bookmarks/route.ts` | BFF GET proxy for bookmarks (returns `[]` when unauthenticated) |
 | `app/bff/ai-tools/summary/jobs/[job_id]/route.ts` | BFF proxy for AI job polling |
 | `components/ForgotPasswordModal.tsx` | Inline 3-step OTP modal used on the sign-in page |
 | `components/PasswordInput.tsx` | Reusable password input with show/hide toggle and error state |
+| `components/icons.tsx` | Shared SVG icon components used across pages |
 | `types/article.ts` | Shared `Article` TypeScript interface used across all pages |
+| `util/format.ts` | Shared date formatting and text truncation utilities |
+| `middleware.ts` | Edge middleware: JWT decode with jose signature verification, protected route redirects |
 | `Dockerfile` | Production container configuration |
 | `.github/workflows/deploy.yml` | Frontend CI/CD pipeline (auto-deploy to AWS EC2) |
 | `README.md` | Frontend setup guide, scripts, key features, folder structure |
 
 ---
 
-## Shelly Huang — Backend Article CRUD
+## Shelly Huang — Backend Article CRUD & Frontend Article UX
 
 ### Backend (`IP_Group_Assignment_Backend/`)
 
@@ -88,6 +96,21 @@
 | `app/models/article.py` | `Article` Beanie document with title, content, summary, author, and AI job fields |
 | `app/routers/article.py` | Article endpoints: create (triggers AI background job), list (public), get by ID (public), update, delete |
 | `app/main.py` | Co-authored: registered `Article` document model in Beanie startup |
+
+### Frontend (`IP_Group_Assignment_Frontend/`)
+
+| File | Description |
+|------|-------------|
+| `app/articles/[id]/page.tsx` | Article detail UX enhancements: table of contents, reading progress bar, reading time estimate, back-to-top button, sticky floating action bar, copy-link button, print feature, AI summary position; co-authored with Dequan and Kai |
+| `app/articles/page.tsx` | Article listing enhancements: article count display, recently-viewed section integration; co-authored with Dequan and Kai |
+| `app/profile/page.tsx` | Profile page UX improvements; co-authored with Kai |
+| `components/RecentlyViewedArticles.tsx` | Standalone recently-viewed articles component (localStorage-based tracking) |
+| `components/footer/footer.tsx` | Footer dark mode support |
+| `components/footer/footer.sass` | Footer dark mode styles |
+| `components/header/header.tsx` | Header dark mode support |
+| `hooks/useTheme.ts` | Dark/light mode theme toggle hook |
+| `tailwind.config.js` | Dark mode configuration (`darkMode: 'class'`) |
+| `styles/main.css` | Dark mode and layout style additions |
 
 ---
 
@@ -99,8 +122,8 @@
 |------|-------------|
 | `app/layout.tsx` | Root layout: fonts, global styles, header, footer |
 | `app/home/page.tsx` | Home page: hero section, featured article, recent articles list, CTA banner |
-| `app/articles/page.tsx` | Articles listing page: client-side search, pagination (9 per page) |
-| `app/articles/[id]/page.tsx` | Article detail page: markdown rendering, AI summary with progress polling, bookmark toggle |
+| `app/articles/page.tsx` | Articles listing page: client-side search, pagination (9 per page); co-authored with Kai and Shelly |
+| `app/articles/[id]/page.tsx` | Article detail page: markdown rendering, bookmark toggle; co-authored with Kai and Shelly |
 | `app/admin/page.tsx` | Admin dashboard: stats overview and navigation links |
 | `app/admin/articles/page.tsx` | Admin article management: create/edit/delete articles with inline form |
 | `app/admin/users/page.tsx` | Admin user management: list all users, live search, edit role, delete |
@@ -113,19 +136,18 @@
 | `actions/articles.ts` | Server actions: `createArticleAction`, `updateArticleAction`, `deleteArticleAction` |
 | `actions/admin.ts` | Server actions: admin user list, update role, delete user |
 | `actions/user.ts` | Server action: `updateUserAction` (name/email update) |
-| `components/header/header.tsx` | Site header: navigation, auth state, mobile menu |
-| `components/header/header.sass` | Header styles |
-| `components/footer/footer.tsx` | Site footer |
-| `components/footer/footer.sass` | Footer styles |
+| `components/header/header.tsx` | Site header: navigation, auth state, mobile menu; co-authored with Shelly |
+| `components/header/header.sass` | Header styles; co-authored with Shelly |
+| `components/footer/footer.tsx` | Site footer; co-authored with Shelly |
+| `components/footer/footer.sass` | Footer styles; co-authored with Shelly |
 | `hooks/useAuth.ts` | `useUser` hook — fetches current user, exposes `isAdmin` |
 | `hooks/useUser.ts` | `updateUser` helper for profile edits |
-| `middleware.ts` | Edge middleware: JWT decode, protected route redirects |
 | `util/api/backend.ts` | Response normalisation helpers (`normalizeArticleResponse`, etc.) |
 | `util/api/backendErrors.ts` | `messageFromApiError` error parser |
 | `util/api/client.ts` | `API_BASE` URL constant |
 | `util/api/publicArticles.ts` | `fetchPublicArticlesList` and `fetchPublicArticleById` utilities |
 | `styles/global.sass` | Global SASS styles and CSS custom properties |
-| `styles/main.css` | Compiled Tailwind entry point |
-| `tailwind.config.js` | Tailwind theme: brand colours, typography, custom utilities |
+| `styles/main.css` | Compiled Tailwind entry point; co-authored with Shelly |
+| `tailwind.config.js` | Tailwind theme: brand colours, typography, custom utilities; co-authored with Shelly |
 | `package.json` | Node.js dependencies and scripts |
 | `tsconfig.json` | TypeScript compiler configuration |
